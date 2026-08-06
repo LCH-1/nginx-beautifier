@@ -1,0 +1,55 @@
+{
+  "name": "nginx-beautifier",
+  "displayName": "nginx-beautifier",
+  "description": "A safe, editor-aware NGINX configuration formatter for VS Code and Cursor.",
+  "version": "0.1.0",
+  "publisher": "ckdgh",
+  "license": "MIT",
+  "icon": "images/icon.png",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Formatters"
+  ],
+  "keywords": [
+    "nginx",
+    "formatter",
+    "beautify",
+    "beautifier",
+    "cursor"
+  ],
+  "main": "./out/src/extension.js",
+  "activationEvents": [
+    "onStartupFinished",
+    "onLanguage:nginx",
+    "onLanguage:NGINX"
+  ],
+  "contributes": {
+    "configuration": {
+      "title": "NGINX Beautifier",
+      "type": "object",
+      "properties": {
+        "nginxBeautifier.removeCertbotComments": {
+          "type": "boolean",
+          "default": false,
+          "scope": "resource",
+          "markdownDescription": "Remove exact `# managed by Certbot` marker comments while preserving the directives they annotate."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p .",
+    "watch": "tsc -watch -p .",
+    "test": "npm run compile && node --test out/test/*.test.js",
+    "package": "vsce package --no-dependencies"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.2",
+    "@types/vscode": "1.85.0",
+    "@vscode/vsce": "^3.9.2",
+    "typescript": "^7.0.2"
+  }
+}
