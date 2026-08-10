@@ -1,0 +1,232 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "NGINX",
+  "scopeName": "source.nginx",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#block-directive" },
+    { "include": "#directive" },
+    { "include": "#strings" },
+    { "include": "#variables" },
+    { "include": "#urls" },
+    { "include": "#addresses" },
+    { "include": "#mime-types" },
+    { "include": "#operators" },
+    { "include": "#constants" },
+    { "include": "#numbers" },
+    { "include": "#punctuation" }
+  ],
+  "repository": {
+    "block-directive": {
+      "name": "meta.directive.block.nginx",
+      "begin": "(^[\\t ]*|(?<=[;{}])[\\t ]*)(http|events|stream|mail|server|location|upstream|map|geo|types|split_clients|limit_except|if|match)(?=[\\t {;]|$)",
+      "beginCaptures": {
+        "2": { "name": "keyword.control.block.nginx" }
+      },
+      "end": "(?=;|(?<!\\$)\\{(?=[\\t ]*(?:#.*)?(?:$|[A-Za-z_@}])))",
+      "patterns": [
+        { "include": "#directive-values" }
+      ]
+    },
+    "directive": {
+      "name": "meta.directive.nginx",
+      "begin": "(^[\\t ]*|(?<=[;{}])[\\t ]*)([A-Za-z_][A-Za-z0-9_-]*)(?=[\\t {;]|$)",
+      "beginCaptures": {
+        "2": { "name": "keyword.other.directive.nginx" }
+      },
+      "end": "(?=;|(?<!\\$)\\{(?=[\\t ]*(?:#.*)?(?:$|[A-Za-z_@}])))",
+      "patterns": [
+        { "include": "#directive-values" }
+      ]
+    },
+    "directive-values": {
+      "patterns": [
+        { "include": "#comments" },
+        { "include": "#strings" },
+        { "include": "#regular-expressions" },
+        { "include": "#variables" },
+        { "include": "#urls" },
+        { "include": "#addresses" },
+        { "include": "#mime-types" },
+        { "include": "#operators" },
+        { "include": "#constants" },
+        { "include": "#numbers" },
+        { "include": "#named-locations" },
+        { "include": "#escapes" },
+        { "include": "#value-punctuation" }
+      ]
+    },
+    "comments": {
+      "name": "comment.line.number-sign.nginx",
+      "begin": "(?<![^\\s;{}])(#)",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.comment.nginx" }
+      },
+      "end": "$"
+    },
+    "strings": {
+      "patterns": [
+        { "include": "#double-quoted-string" },
+        { "include": "#single-quoted-string" }
+      ]
+    },
+    "double-quoted-string": {
+      "name": "string.quoted.double.nginx",
+      "begin": "\"",
+      "beginCaptures": {
+        "0": { "name": "punctuation.definition.string.begin.nginx" }
+      },
+      "end": "\"",
+      "endCaptures": {
+        "0": { "name": "punctuation.definition.string.end.nginx" }
+      },
+      "patterns": [
+        { "include": "#escapes" },
+        { "include": "#variables" }
+      ]
+    },
+    "single-quoted-string": {
+      "name": "string.quoted.single.nginx",
+      "begin": "'",
+      "beginCaptures": {
+        "0": { "name": "punctuation.definition.string.begin.nginx" }
+      },
+      "end": "'",
+      "endCaptures": {
+        "0": { "name": "punctuation.definition.string.end.nginx" }
+      },
+      "patterns": [
+        { "include": "#escapes" },
+        { "include": "#variables" }
+      ]
+    },
+    "variables": {
+      "patterns": [
+        {
+          "name": "variable.other.braced.nginx",
+          "match": "\\$\\{[A-Za-z_][A-Za-z0-9_]*\\}"
+        },
+        {
+          "name": "variable.other.nginx",
+          "match": "\\$(?:[A-Za-z_][A-Za-z0-9_]*|[0-9]+)"
+        }
+      ]
+    },
+    "regular-expressions": {
+      "patterns": [
+        {
+          "match": "(!?~\\*?)([\\t ]+)((?:\\\\.|[^\\s;{}#])+)" ,
+          "captures": {
+            "1": { "name": "keyword.operator.regexp.nginx" },
+            "3": { "name": "string.regexp.unquoted.nginx" }
+          }
+        },
+        {
+          "name": "string.regexp.quantifier.nginx",
+          "match": "\\{[0-9]+(?:,[0-9]*)?\\}"
+        }
+      ]
+    },
+    "operators": {
+      "name": "keyword.operator.nginx",
+      "match": "(?:!=|!~\\*?|~\\*?|\\^~|=)"
+    },
+    "urls": {
+      "patterns": [
+        {
+          "name": "string.unquoted.url.nginx",
+          "match": "\\b(?:https?|grpcs?|uwsgi|scgi|memcached|fastcgi)://[^\\s;#]+"
+        },
+        {
+          "name": "string.unquoted.socket.nginx",
+          "match": "\\bunix:[^\\s;#]+"
+        },
+        {
+          "name": "string.unquoted.path.nginx",
+          "match": "(?<![A-Za-z0-9_])/(?:\\\\.|[^\\s;#{}])+"
+        }
+      ]
+    },
+    "addresses": {
+      "patterns": [
+        {
+          "name": "constant.numeric.ipv4.nginx",
+          "match": "\\b(?:[0-9]{1,3}\\.){3}[0-9]{1,3}(?:/[0-9]{1,2})?(?::[0-9]+)?\\b"
+        },
+        {
+          "name": "constant.numeric.ipv6.nginx",
+          "match": "(?:\\[[0-9A-Fa-f:]+\\](?::[0-9]+)?|\\b[0-9A-Fa-f]*:[0-9A-Fa-f:]+(?:/[0-9]{1,3})?\\b)"
+        }
+      ]
+    },
+    "mime-types": {
+      "name": "constant.other.mime-type.nginx",
+      "match": "\\b[a-zA-Z][a-zA-Z0-9.+-]*/[a-zA-Z0-9.+-]+\\b"
+    },
+    "constants": {
+      "patterns": [
+        {
+          "name": "constant.language.boolean.nginx",
+          "match": "\\b(?:on|off|yes|no|true|false)\\b"
+        },
+        {
+          "name": "constant.language.method.nginx",
+          "match": "\\b(?:GET|HEAD|POST|PUT|PATCH|DELETE|OPTIONS|TRACE|CONNECT)\\b"
+        },
+        {
+          "name": "constant.language.nginx",
+          "match": "\\b(?:default_server|ssl|http2|http3|quic|proxy_protocol|reuseport|udp|unix|none|all|any|max|unlimited|last|break|redirect|permanent)\\b"
+        }
+      ]
+    },
+    "numbers": {
+      "name": "constant.numeric.nginx",
+      "match": "(?<![A-Za-z0-9_.-])[0-9]+(?:\\.[0-9]+)?(?:ms|[smhdw]|[kKmMgG])?(?![A-Za-z0-9_.-])"
+    },
+    "named-locations": {
+      "name": "entity.name.label.nginx",
+      "match": "@[A-Za-z_][A-Za-z0-9_-]*"
+    },
+    "escapes": {
+      "name": "constant.character.escape.nginx",
+      "match": "\\\\."
+    },
+    "value-punctuation": {
+      "patterns": [
+        {
+          "name": "punctuation.section.group.begin.nginx",
+          "match": "\\("
+        },
+        {
+          "name": "punctuation.section.group.end.nginx",
+          "match": "\\)"
+        },
+        {
+          "name": "punctuation.section.brackets.begin.nginx",
+          "match": "\\["
+        },
+        {
+          "name": "punctuation.section.brackets.end.nginx",
+          "match": "\\]"
+        }
+      ]
+    },
+    "punctuation": {
+      "patterns": [
+        {
+          "name": "punctuation.section.block.begin.nginx",
+          "match": "\\{"
+        },
+        {
+          "name": "punctuation.section.block.end.nginx",
+          "match": "\\}"
+        },
+        {
+          "name": "punctuation.terminator.directive.nginx",
+          "match": ";"
+        },
+        { "include": "#value-punctuation" }
+      ]
+    }
+  }
+}

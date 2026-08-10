@@ -1,15 +1,24 @@
 {
   "name": "nginx-beautifier",
-  "displayName": "nginx-beautifier",
-  "description": "A safe, editor-aware NGINX configuration formatter for VS Code and Cursor.",
-  "version": "0.1.0",
-  "publisher": "ckdgh",
+  "displayName": "NGINX Beautifier",
+  "description": "Complete NGINX language support with syntax highlighting and safe formatting for VS Code and Cursor.",
+  "version": "0.2.0",
+  "publisher": "LCH-1",
+  "author": {
+    "name": "LCH-1",
+    "url": "https://github.com/LCH-1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LCH-1/nginx-beautifier.git"
+  },
   "license": "MIT",
   "icon": "images/icon.png",
   "engines": {
     "vscode": "^1.85.0"
   },
   "categories": [
+    "Programming Languages",
     "Formatters"
   ],
   "keywords": [
@@ -17,15 +26,47 @@
     "formatter",
     "beautify",
     "beautifier",
+    "syntax highlighting",
+    "language support",
     "cursor"
   ],
   "main": "./out/src/extension.js",
   "activationEvents": [
-    "onStartupFinished",
     "onLanguage:nginx",
     "onLanguage:NGINX"
   ],
   "contributes": {
+    "languages": [
+      {
+        "id": "nginx",
+        "aliases": [
+          "NGINX",
+          "nginx"
+        ],
+        "extensions": [
+          ".nginx",
+          ".nginx.conf",
+          ".nginxconf"
+        ],
+        "filenames": [
+          "nginx.conf"
+        ],
+        "filenamePatterns": [
+          "**/nginx/**/*.conf",
+          "**/conf.d/**/*.conf",
+          "**/sites-available/*",
+          "**/sites-enabled/*"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "nginx",
+        "scopeName": "source.nginx",
+        "path": "./syntaxes/nginx.tmLanguage.json"
+      }
+    ],
     "configuration": {
       "title": "NGINX Beautifier",
       "type": "object",
@@ -35,6 +76,12 @@
           "default": false,
           "scope": "resource",
           "markdownDescription": "Remove exact `# managed by Certbot` marker comments while preserving the directives they annotate."
+        },
+        "nginxBeautifier.preserveDirectiveLineBreaks": {
+          "type": "boolean",
+          "default": true,
+          "scope": "resource",
+          "markdownDescription": "Preserve intentional line breaks inside multi-line directives and indent continuation lines one level."
         }
       }
     }
@@ -50,6 +97,8 @@
     "@types/node": "^26.1.2",
     "@types/vscode": "1.85.0",
     "@vscode/vsce": "^3.9.2",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "vscode-oniguruma": "^2.0.1",
+    "vscode-textmate": "^9.3.2"
   }
 }

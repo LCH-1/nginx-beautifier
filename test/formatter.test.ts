@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { formatNginx, isCertbotManagedComment } from "../src/formatter";
+import {
+  formatNginx,
+  formatNginxRange,
+  isCertbotManagedComment,
+} from "../src/formatter";
 
 const twoSpaces = { indentation: "  " } as const;
 
@@ -57,6 +61,55 @@ test("keeps quoted, escaped, variable, and comment punctuation inside tokens", (
     "  }",
     '  if ($request_method = "POST") {',
     "    return 405;",
+    "  }",
+    "}",
+  ].join("\n");
+
+  assert.equal(formatNginx(source, twoSpaces), expected);
+});
+
+test("preserves nginx argument boundaries around a standalone closing parenthesis", () => {
+  const source = [
+    "server{",
+    "set   $literal   );",
+    "return   200   );",
+    'if ($request_method = "POST"){return 405;}',
+    "}",
+  ].join("\n");
+  const expected = [
+    "server {",
+    "  set $literal );",
+    "  return 200 );",
+    '  if ($request_method = "POST") {',
+    "    return 405;",
+    "  }",
+    "}",
+  ].join("\n");
+
+  assert.equal(formatNginx(source, twoSpaces), expected);
+});
+
+test("keeps adjacent quoted and unquoted token segments together", () => {
+  const source = 'set   $value   prefix"two words"$suffix;\n';
+  const expected = 'set $value prefix"two words"$suffix;\n';
+
+  assert.equal(formatNginx(source, twoSpaces), expected);
+});
+
+test("formats unquoted regular-expression quantifiers and named properties safely", () => {
+  const source = [
+    "server{",
+    "location ~ ^/items/[0-9]{2,4}$ {return 200;}",
+    "location ~ ^/letters/\\p{Letter}+$ {return 204;}",
+    "}",
+  ].join("\n");
+  const expected = [
+    "server {",
+    "  location ~ ^/items/[0-9]{2,4}$ {",
+    "    return 200;",
+    "  }",
+    "  location ~ ^/letters/\\p{Letter}+$ {",
+    "    return 204;",
     "  }",
     "}",
   ].join("\n");
@@ -175,7 +228,6 @@ const invalidCases: ReadonlyArray<readonly [name: string, source: string]> = [
   ["unclosed block", "server{listen 80;"],
   ["unexpected closing brace", "server{listen 80;}}"],
   ["missing semicolon", "server {\nlisten 80\n}\n"],
-  ["unquoted regex quantifier", "map $x $y { ~^\\d{4}$ value; }\n"],
 ];
 
 for (const [name, source] of invalidCases) {
@@ -212,6 +264,85 @@ test("formatting is idempotent", () => {
     const twice = formatNginx(once, options);
     assert.equal(twice, once);
   }
+});
+
+test("preserves and consistently indents multi-line directives by default", () => {
+  const source = [
+    "http{",
+    "log_format   main   '$remote_addr - $remote_user'",
+    "              '\"$request\" $status $body_bytes_sent';",
+    "}",
+  ].join("\n");
+  const expected = [
+    "http {",
+    "  log_format main '$remote_addr - $remote_user'",
+    "    '\"$request\" $status $body_bytes_sent';",
+    "}",
+  ].join("\n");
+
+  assert.equal(formatNginx(source, twoSpaces), expected);
+  assert.equal(
+    formatNginx(source, {
+      ...twoSpaces,
+      preserveDirectiveLineBreaks: false,
+    }),
+    [
+      "http {",
+      "  log_format main '$remote_addr - $remote_user' '\"$request\" $status $body_bytes_sent';",
+      "}",
+    ].join("\n"),
+  );
+});
+
+test("keeps a block brace at block depth after a header comment", () => {
+  const source = [
+    "server # keep this header note",
+    "{",
+    "listen 80;",
+    "}",
+  ].join("\n");
+  const expected = [
+    "server # keep this header note",
+    "{",
+    "  listen 80;",
+    "}",
+  ].join("\n");
+
+  assert.equal(formatNginx(source, twoSpaces), expected);
+});
+
+test("formats a balanced selection without losing its surrounding indentation", () => {
+  const source = [
+    "    listen   80;",
+    "    location /api{",
+    "    proxy_pass   http://backend;",
+    "    }",
+  ].join("\n");
+  const expected = [
+    "    listen 80;",
+    "    location /api {",
+    "      proxy_pass http://backend;",
+    "    }",
+  ].join("\n");
+
+  assert.equal(formatNginxRange(source, twoSpaces), expected);
+});
+
+test("leaves an incomplete selection and whitespace-only input unchanged", () => {
+  const incomplete = [
+    "    location /api {",
+    "      proxy_pass http://backend;",
+  ].join("\n");
+  const whitespace = "  \r\n\t\r\n";
+
+  assert.equal(formatNginxRange(incomplete, twoSpaces), incomplete);
+  assert.equal(formatNginx(whitespace, twoSpaces), whitespace);
+});
+
+test("fails closed before pathologically deep blocks can exhaust the stack", () => {
+  const source = `${"section{".repeat(300)}${"}".repeat(300)}`;
+
+  assert.equal(formatNginx(source, twoSpaces), source);
 });
 
 test("leaves Lua embedded-language blocks completely unchanged", () => {

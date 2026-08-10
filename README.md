@@ -1,8 +1,19 @@
-# nginx-beautifier
+# NGINX Beautifier
 
-`nginx-beautifier` is a safe NGINX configuration formatter for VS Code and Cursor.
-It uses the editor's current indentation settings and keeps quoted NGINX values
-byte-for-byte intact, including PCRE quantifiers such as `\d{4}`.
+NGINX Beautifier provides complete NGINX language support for VS Code and
+Cursor: an `nginx` language mode, syntax highlighting, editor behavior, and a
+safe configuration formatter.
+
+## Features
+
+- **NGINX** in the language selector
+- TextMate highlighting for directives, blocks, comments, strings, variables,
+  regular expressions, URLs, addresses, units, and punctuation
+- Comment toggling, bracket matching, auto-closing pairs, folding, and block
+  indentation
+- **Format Document**, **Format Selection**, and `editor.formatOnSave`
+- Editor-controlled spaces/tabs and LF/CRLF preservation
+- Fail-closed parsing for incomplete or unsupported input
 
 ## Why
 
@@ -19,19 +30,21 @@ map $time_iso8601 $datetime_kst {
 }
 ```
 
-## File detection
+## Language and file detection
 
-The formatter is available for both `nginx` and legacy `NGINX` language IDs,
-so it works alongside existing NGINX syntax-highlighting extensions. It also
-matches these paths even when the editor currently sees the file as plain text:
+The extension registers the canonical `nginx` language ID and displays it as
+**NGINX**. It automatically detects:
 
-- `**/nginx.conf`
+- `nginx.conf`
+- `*.nginx`, `*.nginx.conf`, and `*.nginxconf`
+- `**/nginx/**/*.conf`
 - `**/conf.d/**/*.conf`
 - `**/sites-available/*`
 - `**/sites-enabled/*`
 
-It intentionally does not claim every `*.conf` file. For another NGINX layout,
-add a precise association in your VS Code or Cursor settings:
+It intentionally does not claim every `*.conf` file because `.conf` is also
+used by unrelated formats. For another layout, choose **NGINX** from
+**Change Language Mode** (`Ctrl+K M`) or add a precise association:
 
 ```json
 {
@@ -43,8 +56,10 @@ add a precise association in your VS Code or Cursor settings:
 
 ## Formatting
 
-Run **Format Document** or enable `editor.formatOnSave`. The formatter uses the
-`tabSize` and `insertSpaces` values supplied by the editor for that document.
+Run **Format Document**, **Format Selection**, or enable `editor.formatOnSave`.
+The formatter uses the document's active `tabSize` and `insertSpaces` values.
+Intentional line breaks in directives such as `log_format` are preserved and
+continuation lines are indented one level.
 
 If more than one NGINX formatter is installed, select **Format Document With...**
 once, or configure this extension explicitly:
@@ -52,13 +67,21 @@ once, or configure this extension explicitly:
 ```json
 {
   "[nginx]": {
-    "editor.defaultFormatter": "ckdgh.nginx-beautifier"
-  },
-  "[NGINX]": {
-    "editor.defaultFormatter": "ckdgh.nginx-beautifier"
+    "editor.defaultFormatter": "LCH-1.nginx-beautifier"
   }
 }
 ```
+
+To flatten multi-line directives instead of preserving their line breaks:
+
+```json
+{
+  "nginxBeautifier.preserveDirectiveLineBreaks": false
+}
+```
+
+The formatter also remains compatible with the legacy uppercase `NGINX`
+language ID contributed by some older extensions.
 
 ## Certbot marker comments
 
@@ -76,9 +99,10 @@ Near matches, quoted text, and other comments are preserved.
 
 ## Safety
 
-The formatter returns an incomplete or unbalanced document unchanged. It also
-leaves `*_by_lua_block` blocks unchanged because their contents are Lua rather
-than NGINX configuration syntax.
+The formatter preserves raw token contents and logical argument boundaries. It
+returns incomplete or unbalanced input unchanged, keeps quoted and unquoted
+PCRE quantifiers intact, and leaves documents containing `*_by_lua_block`
+unchanged because those blocks contain Lua rather than NGINX syntax.
 
 ## Development
 
@@ -88,5 +112,6 @@ npm test
 npm run package
 ```
 
-`npm run package` creates a `.vsix` that can be installed from the Extensions
-view in both VS Code and Cursor using **Install from VSIX...**.
+The test suite exercises both the formatter and the actual TextMate/Oniguruma
+tokenizer used by VS Code. `npm run package` creates a `.vsix` that can be
+installed from the Extensions view using **Install from VSIX...**.

@@ -2,6 +2,7 @@ export interface NginxFormatOptions {
   indentation: string;
   eol?: "\n" | "\r\n";
   removeCertbotComments?: boolean;
+  preserveDirectiveLineBreaks?: boolean;
 }
 
 type TokenType =
@@ -54,6 +55,8 @@ interface BlockNode {
 
 type Node = CommentNode | DirectiveNode | BlockNode;
 
+const MAX_NESTING_DEPTH = 256;
+
 interface ParseResult {
   nodes: Node[];
   closeToken?: Token;
@@ -63,6 +66,7 @@ interface ParseResult {
 interface FormatContext {
   indentation: string;
   removeCertbotComments: boolean;
+  preserveDirectiveLineBreaks: boolean;
   lines: string[];
 }
 
@@ -79,7 +83,7 @@ export function formatNginx(
   const hasBom = source.startsWith("\uFEFF");
   const body = hasBom ? source.slice(1) : source;
 
-  if (body.length === 0) {
+  if (body.length === 0 || body.trim().length === 0) {
     return source;
   }
 
@@ -104,6 +108,8 @@ export function formatNginx(
     const context: FormatContext = {
       indentation: options.indentation,
       removeCertbotComments: options.removeCertbotComments ?? false,
+      preserveDirectiveLineBreaks:
+        options.preserveDirectiveLineBreaks ?? true,
       lines: [],
     };
 
@@ -125,6 +131,43 @@ export function formatNginx(
     }
     throw error;
   }
+}
+
+/**
+ * Formats a balanced selection while keeping the indentation that places it in
+ * its surrounding block. An incomplete selection still fails closed through
+ * formatNginx and is returned byte-for-byte unchanged.
+ */
+export function formatNginxRange(
+  source: string,
+  options: NginxFormatOptions,
+): string {
+  const eol = options.eol ?? detectEol(source);
+  const lines = source.split(/\r\n|\r|\n/u);
+  const firstContentLine = lines.find((line) => /\S/u.test(line));
+  const baseIndentation = firstContentLine?.match(/^[ \t]*/u)?.[0] ?? "";
+
+  if (baseIndentation.length === 0) {
+    return formatNginx(source, options);
+  }
+
+  const dedented = lines
+    .map((line) =>
+      line.startsWith(baseIndentation)
+        ? line.slice(baseIndentation.length)
+        : line,
+    )
+    .join(eol);
+  const formatted = formatNginx(dedented, { ...options, eol });
+
+  if (formatted === dedented) {
+    return source;
+  }
+
+  return formatted
+    .split(eol)
+    .map((line) => (line.length > 0 ? `${baseIndentation}${line}` : line))
+    .join(eol);
 }
 
 function detectEol(source: string): "\n" | "\r\n" {
@@ -191,67 +234,54 @@ function lex(source: string): Token[] {
     }
 
     const start = index;
-
-    if (character === "'" || character === '"') {
-      const quote = character;
-      index += 1;
-      let closed = false;
-
-      while (index < source.length) {
-        const quotedCharacter = source[index];
-        if (quotedCharacter === "\\") {
-          if (index + 1 >= source.length) {
-            throw new NginxSyntaxError("Dangling escape in quoted token");
-          }
-          index += 2;
-          continue;
-        }
-        index += 1;
-        if (quotedCharacter === quote) {
-          closed = true;
-          break;
-        }
-      }
-
-      if (!closed) {
-        throw new NginxSyntaxError("Unterminated quoted token");
-      }
-
-      const next = source[index];
-      if (
-        next !== undefined &&
-        !isNginxWhitespace(next) &&
-        next !== ";" &&
-        next !== "{" &&
-        next !== ")"
-      ) {
-        throw new NginxSyntaxError("Missing separator after quoted token");
-      }
-
-      emit("word", source.slice(start, index));
-      continue;
-    }
-
+    let quote: "'" | '"' | undefined;
     while (index < source.length) {
-      const bareCharacter = source[index];
+      const wordCharacter = source[index];
 
-      if (bareCharacter === "\\") {
+      if (wordCharacter === "\\") {
         if (index + 1 >= source.length) {
-          throw new NginxSyntaxError("Dangling escape in bare token");
+          throw new NginxSyntaxError("Dangling escape in word");
         }
         index += 2;
         continue;
       }
 
+      if (quote !== undefined) {
+        index += 1;
+        if (wordCharacter === quote) {
+          quote = undefined;
+        }
+        continue;
+      }
+
+      if (wordCharacter === "'" || wordCharacter === '"') {
+        quote = wordCharacter;
+        index += 1;
+        continue;
+      }
+
       if (
-        isNginxWhitespace(bareCharacter) ||
-        bareCharacter === ";" ||
-        (bareCharacter === "{" && source[index - 1] !== "$")
+        isNginxWhitespace(wordCharacter) ||
+        wordCharacter === ";" ||
+        wordCharacter === "}"
       ) {
         break;
       }
 
+      if (wordCharacter === "{") {
+        const literalBraceEnd = findLiteralBraceEnd(source, index, start);
+        if (literalBraceEnd === undefined) {
+          break;
+        }
+        index = literalBraceEnd + 1;
+        continue;
+      }
+
       index += 1;
+    }
+
+    if (quote !== undefined) {
+      throw new NginxSyntaxError("Unterminated quoted token");
     }
 
     if (index === start) {
@@ -262,6 +292,47 @@ function lex(source: string): Token[] {
   }
 
   return tokens;
+}
+
+/**
+ * NGINX uses braces both for blocks and inside unquoted values. Only consume
+ * forms whose closing brace is unambiguous; every other opening brace remains
+ * a block delimiter and is handled by the parser.
+ */
+function findLiteralBraceEnd(
+  source: string,
+  openIndex: number,
+  tokenStart: number,
+): number | undefined {
+  if (openIndex <= tokenStart) {
+    return undefined;
+  }
+
+  const closeIndex = source.indexOf("}", openIndex + 1);
+  if (closeIndex === -1) {
+    return undefined;
+  }
+
+  const contents = source.slice(openIndex + 1, closeIndex);
+  const precedingCharacter = source[openIndex - 1];
+
+  if (
+    precedingCharacter === "$" &&
+    /^[A-Za-z_][A-Za-z0-9_]*$/u.test(contents)
+  ) {
+    return closeIndex;
+  }
+
+  if (/^[0-9]+(?:,[0-9]*)?$/u.test(contents)) {
+    return closeIndex;
+  }
+
+  const prefix = source.slice(Math.max(tokenStart, openIndex - 2), openIndex);
+  if (/\\[pPkKgN]$/u.test(prefix) && /^[A-Za-z_][A-Za-z0-9_]*$/u.test(contents)) {
+    return closeIndex;
+  }
+
+  return undefined;
 }
 
 function isHorizontalWhitespace(character: string | undefined): boolean {
@@ -283,14 +354,14 @@ class Parser {
   public constructor(private readonly tokens: Token[]) {}
 
   public parse(): ParseResult {
-    const result = this.parseNodes(false);
+    const result = this.parseNodes(false, 0);
     if (this.index !== this.tokens.length) {
       throw new NginxSyntaxError("Unexpected tokens after document");
     }
     return result;
   }
 
-  private parseNodes(expectClose: boolean): ParseResult {
+  private parseNodes(expectClose: boolean, depth: number): ParseResult {
     const nodes: Node[] = [];
 
     while (this.index < this.tokens.length) {
@@ -354,9 +425,12 @@ class Parser {
         }
 
         if (statementToken.type === "openBrace") {
+          if (depth >= MAX_NESTING_DEPTH) {
+            throw new NginxSyntaxError("Maximum block nesting depth exceeded");
+          }
           this.index += 1;
           const trailingComment = this.takeTrailingComment();
-          const childResult = this.parseNodes(true);
+          const childResult = this.parseNodes(true, depth + 1);
           if (childResult.closeToken === undefined) {
             throw new NginxSyntaxError("Unclosed block");
           }
@@ -477,6 +551,24 @@ function printStatementStart(
 
   for (const part of parts) {
     if (part.type === "word") {
+      if (
+        context.preserveDirectiveLineBreaks &&
+        part.token.leadingNewlines > 0 &&
+        words.length > 0
+      ) {
+        emitWords();
+        addBlankLineIfNeeded(
+          part.token.leadingNewlines >= 2,
+          context.lines,
+        );
+      } else if (
+        context.preserveDirectiveLineBreaks &&
+        part.token.leadingNewlines >= 2 &&
+        emittedSegment &&
+        words.length === 0
+      ) {
+        addBlankLineIfNeeded(true, context.lines);
+      }
       words.push(part.token);
       continue;
     }
@@ -487,6 +579,11 @@ function printStatementStart(
 
     if (part.token.leadingNewlines > 0 && words.length > 0) {
       emitWords();
+      addBlankLineIfNeeded(
+        context.preserveDirectiveLineBreaks &&
+          part.token.leadingNewlines >= 2,
+        context.lines,
+      );
       emitWords("", part.token);
     } else {
       emitWords("", part.token);
@@ -494,7 +591,11 @@ function printStatementStart(
   }
 
   if (terminator === "{") {
-    emitWords(words.length > 0 ? " {" : "{");
+    if (words.length === 0 && emittedSegment) {
+      context.lines.push(`${indent(depth, context)}{`);
+    } else {
+      emitWords(words.length > 0 ? " {" : "{");
+    }
   } else {
     emitWords(";");
   }
@@ -505,8 +606,6 @@ function joinWords(words: Token[]): string {
   for (const word of words) {
     if (result.length === 0) {
       result = word.raw;
-    } else if (word.raw === ")") {
-      result += word.raw;
     } else {
       result += ` ${word.raw}`;
     }
