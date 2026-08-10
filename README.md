@@ -6,7 +6,7 @@ safe configuration formatter.
 
 ## Features
 
-- **NGINX** in the language selector
+- **NGINX Beautifier** in the language selector
 - TextMate highlighting for directives, blocks, comments, strings, variables,
   regular expressions, URLs, addresses, units, and punctuation
 - Comment toggling, bracket matching, auto-closing pairs, folding, and block
@@ -33,7 +33,7 @@ map $time_iso8601 $datetime_kst {
 ## Language and file detection
 
 The extension registers the canonical `nginx` language ID and displays it as
-**NGINX**. It automatically detects:
+**NGINX Beautifier**. It automatically detects:
 
 - `nginx.conf`
 - `*.nginx`, `*.nginx.conf`, and `*.nginxconf`
@@ -43,7 +43,7 @@ The extension registers the canonical `nginx` language ID and displays it as
 - `**/sites-enabled/*`
 
 It intentionally does not claim every `*.conf` file because `.conf` is also
-used by unrelated formats. For another layout, choose **NGINX** from
+used by unrelated formats. For another layout, choose **NGINX Beautifier** from
 **Change Language Mode** (`Ctrl+K M`) or add a precise association:
 
 ```json
@@ -67,7 +67,7 @@ once, or configure this extension explicitly:
 ```json
 {
   "[nginx]": {
-    "editor.defaultFormatter": "LCH-1.nginx-beautifier"
+    "editor.defaultFormatter": "lch.nginx-beautifier"
   }
 }
 ```

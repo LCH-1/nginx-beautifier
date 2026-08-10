@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1
+
+- Display the language as **NGINX Beautifier** in the language selector.
+- Align the Marketplace publisher and extension ID with the other `lch` extensions.
+- Add Marketplace homepage, issue, and release-script metadata.
+
 ## 0.2.0
 
 - Register the canonical `nginx` language and add automatic NGINX file detection.

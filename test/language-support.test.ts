@@ -33,6 +33,7 @@ interface GrammarContribution {
 }
 
 interface ExtensionManifest {
+  publisher?: string;
   contributes?: {
     languages?: LanguageContribution[];
     grammars?: GrammarContribution[];
@@ -115,6 +116,7 @@ function hasPair(
 
 test("manifest connects the nginx language, language configuration, and TextMate grammar", () => {
   const manifest = readJson<ExtensionManifest>(manifestPath);
+  assert.equal(manifest.publisher, "lch");
   const languages = required(
     manifest.contributes?.languages,
     "package.json must contribute languages",
@@ -124,7 +126,8 @@ test("manifest connects the nginx language, language configuration, and TextMate
     "package.json must contribute the canonical lowercase nginx language id",
   );
 
-  assert.ok(language.aliases?.includes("NGINX"), "NGINX alias is missing");
+  assert.equal(language.aliases?.[0], "NGINX Beautifier");
+  assert.ok(language.aliases?.includes("NGINX"), "legacy NGINX alias is missing");
   assert.ok(language.aliases?.includes("nginx"), "nginx alias is missing");
   assert.ok(language.extensions?.includes(".nginx"), ".nginx association is missing");
   assert.ok(language.filenames?.includes("nginx.conf"), "nginx.conf association is missing");

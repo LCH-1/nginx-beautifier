@@ -2,15 +2,19 @@
   "name": "nginx-beautifier",
   "displayName": "NGINX Beautifier",
   "description": "Complete NGINX language support with syntax highlighting and safe formatting for VS Code and Cursor.",
-  "version": "0.2.0",
-  "publisher": "LCH-1",
+  "version": "0.2.1",
+  "publisher": "lch",
   "author": {
     "name": "LCH-1",
     "url": "https://github.com/LCH-1"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/LCH-1/nginx-beautifier.git"
+    "url": "https://github.com/LCH-1/nginx-beautifier"
+  },
+  "homepage": "https://github.com/LCH-1/nginx-beautifier#readme",
+  "bugs": {
+    "url": "https://github.com/LCH-1/nginx-beautifier/issues"
   },
   "license": "MIT",
   "icon": "images/icon.png",
@@ -40,8 +44,9 @@
       {
         "id": "nginx",
         "aliases": [
-          "NGINX",
-          "nginx"
+          "NGINX Beautifier",
+          "nginx",
+          "NGINX"
         ],
         "extensions": [
           ".nginx",
@@ -91,7 +96,11 @@
     "compile": "tsc -p .",
     "watch": "tsc -watch -p .",
     "test": "npm run compile && node --test out/test/*.test.js",
-    "package": "vsce package --no-dependencies"
+    "package": "vsce package --no-dependencies",
+    "publish": "npm test && vsce publish --no-dependencies",
+    "publish:patch": "npm test && vsce publish patch --no-dependencies",
+    "publish:minor": "npm test && vsce publish minor --no-dependencies",
+    "publish:major": "npm test && vsce publish major --no-dependencies"
   },
   "devDependencies": {
     "@types/node": "^26.1.2",
