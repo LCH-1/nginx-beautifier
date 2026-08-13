@@ -100,7 +100,8 @@
     "publish": "npm test && vsce publish --no-dependencies",
     "publish:patch": "npm test && vsce publish patch --no-dependencies",
     "publish:minor": "npm test && vsce publish minor --no-dependencies",
-    "publish:major": "npm test && vsce publish major --no-dependencies"
+    "publish:major": "npm test && vsce publish major --no-dependencies",
+    "ovsx:publish": "npm test && ovsx publish --no-dependencies"
   },
   "devDependencies": {
     "@types/node": "^26.1.2",
