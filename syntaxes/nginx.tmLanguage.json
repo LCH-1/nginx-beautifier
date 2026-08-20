@@ -4,6 +4,7 @@
   "scopeName": "source.nginx",
   "patterns": [
     { "include": "#comments" },
+    { "include": "#rewrite-directive" },
     { "include": "#block-directive" },
     { "include": "#directive" },
     { "include": "#strings" },
@@ -17,11 +18,23 @@
     { "include": "#punctuation" }
   ],
   "repository": {
+    "rewrite-directive": {
+      "name": "meta.directive.rewrite.nginx",
+      "begin": "(^[\\t ]*|(?<=[;{}])[\\t ]*)(rewrite)([\\t ]+)((?:\\\\.|[^\\s;#])+)",
+      "beginCaptures": {
+        "2": { "name": "keyword.other.directive.nginx" },
+        "4": { "name": "string.regexp.unquoted.nginx" }
+      },
+      "end": "(?=;)",
+      "patterns": [
+        { "include": "#directive-values" }
+      ]
+    },
     "block-directive": {
       "name": "meta.directive.block.nginx",
       "begin": "(^[\\t ]*|(?<=[;{}])[\\t ]*)(http|events|stream|mail|server|location|upstream|map|geo|types|split_clients|limit_except|if|match)(?=[\\t {;]|$)",
       "beginCaptures": {
-        "2": { "name": "keyword.control.block.nginx" }
+        "2": { "name": "entity.name.type.block.nginx" }
       },
       "end": "(?=;|(?<!\\$)\\{(?=[\\t ]*(?:#.*)?(?:$|[A-Za-z_@}])))",
       "patterns": [

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.3
+
+- Treat the first `rewrite` argument as one regular-expression token.
+- Restrict bracket-pair colorization to NGINX block braces so regex groups and character classes stay visually consistent.
+- Give block directives a distinct type scope so names such as `location` contrast with braces across common themes.
+
 ## 0.2.2
 
 - Remove blank lines immediately before closing braces.

@@ -51,6 +51,7 @@ interface LanguageConfiguration {
     lineComment?: string;
   };
   brackets?: string[][];
+  colorizedBracketPairs?: string[][];
   autoClosingPairs?: AutoClosingPair[];
   surroundingPairs?: string[][];
   wordPattern?: string;
@@ -176,6 +177,7 @@ test("manifest connects the nginx language, language configuration, and TextMate
   for (const repositoryEntry of [
     "comments",
     "directive",
+    "rewrite-directive",
     "block-directive",
     "strings",
     "variables",
@@ -215,6 +217,8 @@ test("language configuration supplies NGINX editing behavior", () => {
       `surrounding pair is missing: ${pair[0]}${pair[1]}`,
     );
   }
+
+  assert.deepEqual(configuration.colorizedBracketPairs, [["{", "}"]]);
 
   const wordPattern = required(
     configuration.wordPattern,
@@ -355,7 +359,7 @@ test("TextMate grammar scopes representative NGINX syntax", async () => {
     "}",
   ]);
 
-  assertHasScope(lines[0], "server", "keyword.control.block.nginx");
+  assertHasScope(lines[0], "server", "entity.name.type.block.nginx");
   assertHasScope(lines[0], "{", "punctuation.section.block.begin.nginx");
   assertHasScope(lines[1], "listen", "keyword.other.directive.nginx");
   assertHasScope(lines[1], "127.0.0.1:443", "constant.numeric.ipv4.nginx");
@@ -366,7 +370,7 @@ test("TextMate grammar scopes representative NGINX syntax", async () => {
   assertHasScope(lines[2], "${scheme}", "variable.other.braced.nginx");
   assertHasScope(lines[2], "${host}", "variable.other.braced.nginx");
   assertHasScope(lines[2], "\"${scheme}", "string.quoted.double.nginx", 1);
-  assertHasScope(lines[3], "location", "keyword.control.block.nginx");
+  assertHasScope(lines[3], "location", "entity.name.type.block.nginx");
   assertHasScope(lines[3], "~*", "keyword.operator.regexp.nginx");
   assertHasScope(lines[3], "^/assets", "string.regexp.unquoted.nginx");
   assertHasScope(lines[4], "proxy_pass", "keyword.other.directive.nginx");
@@ -374,8 +378,32 @@ test("TextMate grammar scopes representative NGINX syntax", async () => {
   assertHasScope(lines[6], "custom_module_toggle", "keyword.other.directive.nginx");
   assertHasScope(lines[6], "on", "constant.language.boolean.nginx");
   assertHasScope(lines[7], "65s", "constant.numeric.nginx");
-  assertHasScope(lines[8], "types", "keyword.control.block.nginx");
+  assertHasScope(lines[8], "types", "entity.name.type.block.nginx");
   assertHasScope(lines[9], "text/html", "constant.other.mime-type.nginx");
+});
+
+test("rewrite patterns stay a single regexp token instead of bracket punctuation", async () => {
+  const grammar = await loadNginxGrammar();
+  const [location, rewrite] = tokenizeLines(grammar, [
+    "location /api/ {",
+    "  rewrite ^([^.]*[^/])$ $1/ break;",
+  ]);
+
+  assertHasScope(location, "location", "entity.name.type.block.nginx");
+  assertHasScope(location, "{", "punctuation.section.block.begin.nginx");
+
+  for (const token of ["^", "(", "[", "]", ")", "$"]) {
+    const scopes = scopesFor(rewrite, token);
+    assert.ok(
+      scopes.includes("string.regexp.unquoted.nginx"),
+      `${JSON.stringify(token)} was not scoped as regexp: ${scopes.join(" ")}`,
+    );
+    assert.equal(
+      scopes.some((scope) => scope.startsWith("punctuation.section.")),
+      false,
+      `${JSON.stringify(token)} was also scoped as bracket punctuation: ${scopes.join(" ")}`,
+    );
+  }
 });
 
 test("hash signs inside bare and quoted values are not comments", async () => {

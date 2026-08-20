@@ -2,7 +2,7 @@
   "name": "nginx-beautifier",
   "displayName": "NGINX Beautifier",
   "description": "Complete NGINX language support with syntax highlighting and safe formatting for VS Code and Cursor.",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "publisher": "lch",
   "author": {
     "name": "LCH-1",
