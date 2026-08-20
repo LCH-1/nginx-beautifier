@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.2
+
+- Remove blank lines immediately before closing braces.
+- Add a blank line between adjacent top-level blocks.
+- Ensure formatted documents end with a final newline.
+
 ## 0.2.1
 
 - Display the language as **NGINX Beautifier** in the language selector.

@@ -48,7 +48,6 @@ interface BlockNode {
   parts: StatementPart[];
   trailingComment?: Token;
   children: Node[];
-  blankBeforeClose: boolean;
   closingComment?: Token;
   blankBefore: boolean;
 }
@@ -104,7 +103,6 @@ export function formatNginx(
     }
 
     const eol = options.eol ?? detectEol(body);
-    const hadFinalNewline = /(?:\r\n|\r|\n)$/u.test(body);
     const context: FormatContext = {
       indentation: options.indentation,
       removeCertbotComments: options.removeCertbotComments ?? false,
@@ -116,7 +114,7 @@ export function formatNginx(
     printNodes(parsed.nodes, 0, context);
 
     let formatted = context.lines.join(eol);
-    if (hadFinalNewline && formatted.length > 0) {
+    if (formatted.length > 0) {
       formatted += eol;
     }
 
@@ -158,7 +156,12 @@ export function formatNginxRange(
         : line,
     )
     .join(eol);
-  const formatted = formatNginx(dedented, { ...options, eol });
+  const hadFinalNewline = /(?:\r\n|\r|\n)$/u.test(dedented);
+  let formatted = formatNginx(dedented, { ...options, eol });
+
+  if (!hadFinalNewline && formatted.endsWith(eol)) {
+    formatted = formatted.slice(0, -eol.length);
+  }
 
   if (formatted === dedented) {
     return source;
@@ -440,7 +443,6 @@ class Parser {
             parts,
             trailingComment,
             children: childResult.nodes,
-            blankBeforeClose: childResult.closeToken.leadingNewlines >= 2,
             closingComment: childResult.closingComment,
             blankBefore,
           });
@@ -494,15 +496,21 @@ function containsEmbeddedLanguageBlock(nodes: Node[]): boolean {
 }
 
 function printNodes(nodes: Node[], depth: number, context: FormatContext): void {
+  let previousPrintedNode: Node | undefined;
+
   for (const node of nodes) {
     if (node.type === "comment" && shouldRemoveComment(node.comment, context)) {
       continue;
     }
 
+    if (depth === 0 && node.type === "block" && previousPrintedNode?.type === "block") {
+      addBlankLineIfNeeded(true, context.lines);
+    }
     addBlankLineIfNeeded(node.blankBefore, context.lines);
 
     if (node.type === "comment") {
       context.lines.push(`${indent(depth, context)}${node.comment.raw}`);
+      previousPrintedNode = node;
       continue;
     }
 
@@ -511,7 +519,6 @@ function printNodes(nodes: Node[], depth: number, context: FormatContext): void 
 
     if (node.type === "block") {
       printNodes(node.children, depth + 1, context);
-      addBlankLineIfNeeded(node.blankBeforeClose, context.lines);
 
       let closingLine = `${indent(depth, context)}}`;
       if (
@@ -522,6 +529,8 @@ function printNodes(nodes: Node[], depth: number, context: FormatContext): void 
       }
       context.lines.push(closingLine);
     }
+
+    previousPrintedNode = node;
   }
 }
 

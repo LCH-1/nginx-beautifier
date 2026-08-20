@@ -9,6 +9,10 @@ import {
 
 const twoSpaces = { indentation: "  " } as const;
 
+function document(lines: string[], eol = "\n"): string {
+  return `${lines.join(eol)}${eol}`;
+}
+
 test("formats a map without interpreting braces in its quoted regular expression", () => {
   const source = [
     "map   $time_iso8601   $datetime_kst{",
@@ -16,12 +20,12 @@ test("formats a map without interpreting braces in its quoted regular expression
     "default    '-';",
     "}",
   ].join("\n");
-  const expected = [
+  const expected = document([
     "map $time_iso8601 $datetime_kst {",
     "  '~^(?<d>\\d{4}-\\d{2}-\\d{2})T(?<t>\\d{2}:\\d{2}:\\d{2})' '$d $t';",
     "  default '-';",
     "}",
-  ].join("\n");
+  ]);
 
   const formatted = formatNginx(source, twoSpaces);
 
@@ -48,7 +52,7 @@ test("keeps quoted, escaped, variable, and comment punctuation inside tokens", (
     'if ($request_method = "POST"){return 405;}',
     "}",
   ].join("\n");
-  const expected = [
+  const expected = document([
     "server {",
     '  set $double "a;{b}#c";',
     "  set $single 'x\\';{y}#z';",
@@ -63,7 +67,7 @@ test("keeps quoted, escaped, variable, and comment punctuation inside tokens", (
     "    return 405;",
     "  }",
     "}",
-  ].join("\n");
+  ]);
 
   assert.equal(formatNginx(source, twoSpaces), expected);
 });
@@ -76,7 +80,7 @@ test("preserves nginx argument boundaries around a standalone closing parenthesi
     'if ($request_method = "POST"){return 405;}',
     "}",
   ].join("\n");
-  const expected = [
+  const expected = document([
     "server {",
     "  set $literal );",
     "  return 200 );",
@@ -84,7 +88,7 @@ test("preserves nginx argument boundaries around a standalone closing parenthesi
     "    return 405;",
     "  }",
     "}",
-  ].join("\n");
+  ]);
 
   assert.equal(formatNginx(source, twoSpaces), expected);
 });
@@ -103,7 +107,7 @@ test("formats unquoted regular-expression quantifiers and named properties safel
     "location ~ ^/letters/\\p{Letter}+$ {return 204;}",
     "}",
   ].join("\n");
-  const expected = [
+  const expected = document([
     "server {",
     "  location ~ ^/items/[0-9]{2,4}$ {",
     "    return 200;",
@@ -112,7 +116,7 @@ test("formats unquoted regular-expression quantifiers and named properties safel
     "    return 204;",
     "  }",
     "}",
-  ].join("\n");
+  ]);
 
   assert.equal(formatNginx(source, twoSpaces), expected);
 });
@@ -134,14 +138,14 @@ test("keeps Certbot marker comments by default", () => {
     "return 404;# managed by Certbot - keep",
     "}# managed by Certbot",
   ].join("\n");
-  const expected = [
+  const expected = document([
     "server {",
     "  listen 443 ssl; # managed by Certbot",
     '  set $marker "# managed by Certbot";',
     "  # managed by Certbot",
     "  return 404; # managed by Certbot - keep",
     "} # managed by Certbot",
-  ].join("\n");
+  ]);
 
   assert.equal(formatNginx(source, twoSpaces), expected);
   assert.equal(
@@ -159,13 +163,13 @@ test("removes only Certbot marker comment tokens when enabled", () => {
     "return 404;# managed by Certbot - keep",
     "}# managed by Certbot",
   ].join("\n");
-  const expected = [
+  const expected = document([
     "server {",
     "  listen 443 ssl;",
     '  set $marker "# managed by Certbot";',
     "  return 404; # managed by Certbot - keep",
     "}",
-  ].join("\n");
+  ]);
 
   assert.equal(
     formatNginx(source, {
@@ -181,7 +185,7 @@ test("uses the indentation string supplied by the editor", () => {
 
   assert.equal(
     formatNginx(source, { indentation: "  " }),
-    [
+    document([
       "http {",
       "  server {",
       "    location / {",
@@ -189,11 +193,11 @@ test("uses the indentation string supplied by the editor", () => {
       "    }",
       "  }",
       "}",
-    ].join("\n"),
+    ]),
   );
   assert.equal(
     formatNginx(source, { indentation: "\t" }),
-    [
+    document([
       "http {",
       "\tserver {",
       "\t\tlocation / {",
@@ -201,25 +205,66 @@ test("uses the indentation string supplied by the editor", () => {
       "\t\t}",
       "\t}",
       "}",
-    ].join("\n"),
+    ]),
   );
 });
 
 test("preserves CRLF line endings and a final newline", () => {
   const source = "http{\r\nserver{\r\nlisten 80;\r\n}\r\n}\r\n";
-  const expected = [
+  const expected = document([
     "http {",
     "  server {",
     "    listen 80;",
     "  }",
     "}",
-    "",
-  ].join("\r\n");
+  ], "\r\n");
 
   const formatted = formatNginx(source, twoSpaces);
 
   assert.equal(formatted, expected);
   assert.doesNotMatch(formatted.replaceAll("\r\n", ""), /\n/u);
+});
+
+test("removes blank lines immediately before closing braces", () => {
+  const source = [
+    "server {",
+    "  ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;",
+    "",
+    "}",
+  ].join("\n");
+  const expected = document([
+    "server {",
+    "  ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;",
+    "}",
+  ]);
+
+  assert.equal(formatNginx(source, twoSpaces), expected);
+});
+
+test("adds a blank line between adjacent top-level blocks", () => {
+  const source = [
+    "server {",
+    "  listen 80;",
+    "}",
+    "server {",
+    "  listen 443 ssl;",
+    "}",
+  ].join("\n");
+  const expected = document([
+    "server {",
+    "  listen 80;",
+    "}",
+    "",
+    "server {",
+    "  listen 443 ssl;",
+    "}",
+  ]);
+
+  assert.equal(formatNginx(source, twoSpaces), expected);
+});
+
+test("always adds a final newline to a formatted document", () => {
+  assert.equal(formatNginx("worker_processes auto;", twoSpaces), "worker_processes auto;\n");
 });
 
 const invalidCases: ReadonlyArray<readonly [name: string, source: string]> = [
@@ -273,12 +318,12 @@ test("preserves and consistently indents multi-line directives by default", () =
     "              '\"$request\" $status $body_bytes_sent';",
     "}",
   ].join("\n");
-  const expected = [
+  const expected = document([
     "http {",
     "  log_format main '$remote_addr - $remote_user'",
     "    '\"$request\" $status $body_bytes_sent';",
     "}",
-  ].join("\n");
+  ]);
 
   assert.equal(formatNginx(source, twoSpaces), expected);
   assert.equal(
@@ -286,11 +331,11 @@ test("preserves and consistently indents multi-line directives by default", () =
       ...twoSpaces,
       preserveDirectiveLineBreaks: false,
     }),
-    [
+    document([
       "http {",
       "  log_format main '$remote_addr - $remote_user' '\"$request\" $status $body_bytes_sent';",
       "}",
-    ].join("\n"),
+    ]),
   );
 });
 
@@ -301,12 +346,12 @@ test("keeps a block brace at block depth after a header comment", () => {
     "listen 80;",
     "}",
   ].join("\n");
-  const expected = [
+  const expected = document([
     "server # keep this header note",
     "{",
     "  listen 80;",
     "}",
-  ].join("\n");
+  ]);
 
   assert.equal(formatNginx(source, twoSpaces), expected);
 });
