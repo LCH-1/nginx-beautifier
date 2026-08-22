@@ -641,7 +641,7 @@ export function isCertbotManagedComment(comment: string): boolean {
   if (!comment.startsWith("#")) {
     return false;
   }
-  return comment.slice(1).trim().toLocaleLowerCase("en-US") === "managed by certbot";
+  return comment.slice(1).trim().toLowerCase() === "managed by certbot";
 }
 
 function addBlankLineIfNeeded(blankBefore: boolean, lines: string[]): void {

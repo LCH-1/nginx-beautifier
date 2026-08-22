@@ -2,7 +2,7 @@
   "name": "nginx-beautifier",
   "displayName": "NGINX Beautifier",
   "description": "Complete NGINX language support with syntax highlighting and safe formatting for VS Code and Cursor.",
-  "version": "0.2.3",
+  "version": "1.0.0",
   "publisher": "lch",
   "author": {
     "name": "LCH-1",
@@ -36,7 +36,6 @@
   ],
   "main": "./out/src/extension.js",
   "activationEvents": [
-    "onLanguage:nginx",
     "onLanguage:NGINX"
   ],
   "contributes": {
@@ -96,12 +95,7 @@
     "compile": "tsc -p .",
     "watch": "tsc -watch -p .",
     "test": "npm run compile && node --test out/test/*.test.js",
-    "package": "vsce package --no-dependencies",
-    "publish": "npm test && vsce publish --no-dependencies",
-    "publish:patch": "npm test && vsce publish patch --no-dependencies",
-    "publish:minor": "npm test && vsce publish minor --no-dependencies",
-    "publish:major": "npm test && vsce publish major --no-dependencies",
-    "ovsx:publish": "npm test && ovsx publish --no-dependencies"
+    "package": "vsce package --no-dependencies"
   },
   "devDependencies": {
     "@types/node": "^26.1.2",

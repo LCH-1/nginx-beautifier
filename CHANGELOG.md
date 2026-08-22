@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.0
+
+- Promote the extension to a stable release after a full formatter, grammar, manifest, test, and packaging review.
+- Correctly scope block-opening braces when a block starts with a regular-expression entry, such as an NGINX `map`.
+- Highlight compact `map` regular-expression keys such as `~*^mobile` consistently.
+- Preserve PCRE quantifiers, escaped braces, variables, and named properties while detecting NGINX block braces.
+- Remove redundant activation and manual publishing configuration, and harden tag publishing with read-only permissions and Node.js 22.
+
 ## 0.2.3
 
 - Treat the first `rewrite` argument as one regular-expression token.

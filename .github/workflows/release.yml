@@ -1,10 +1,12 @@
 name: Publish Extension
 
 on:
-  release:
   push:
     tags:
       - "v*"
+
+permissions:
+  contents: read
 
 jobs:
   publish-open-vsx:
@@ -16,7 +18,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - run: npm ci
@@ -33,7 +35,6 @@ jobs:
         uses: HaaLeo/publish-vscode-extension@v2
         with:
           pat: ${{ secrets.OPEN_VSX_TOKEN }}
-          preRelease: ${{ github.event.release.prerelease || false }}
           skipDuplicate: true
 
   publish-vscode-marketplace:
@@ -45,7 +46,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - run: npm ci

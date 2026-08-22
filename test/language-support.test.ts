@@ -34,6 +34,7 @@ interface GrammarContribution {
 
 interface ExtensionManifest {
   publisher?: string;
+  activationEvents?: string[];
   contributes?: {
     languages?: LanguageContribution[];
     grammars?: GrammarContribution[];
@@ -118,6 +119,15 @@ function hasPair(
 test("manifest connects the nginx language, language configuration, and TextMate grammar", () => {
   const manifest = readJson<ExtensionManifest>(manifestPath);
   assert.equal(manifest.publisher, "lch");
+  assert.equal(
+    manifest.activationEvents?.includes("onLanguage:nginx"),
+    false,
+    "contributed languages activate automatically in VS Code 1.74+",
+  );
+  assert.ok(
+    manifest.activationEvents?.includes("onLanguage:NGINX"),
+    "legacy uppercase NGINX documents still need an explicit activation event",
+  );
   const languages = required(
     manifest.contributes?.languages,
     "package.json must contribute languages",
@@ -404,6 +414,45 @@ test("rewrite patterns stay a single regexp token instead of bracket punctuation
       `${JSON.stringify(token)} was also scoped as bracket punctuation: ${scopes.join(" ")}`,
     );
   }
+});
+
+test("block braces and map regular expressions keep distinct scopes", async () => {
+  const grammar = await loadNginxGrammar();
+  const lines = tokenizeLines(grammar, [
+    "map $http_user_agent $device {",
+    "  ~*^mobile(?:/|$) mobile;",
+    "  default desktop;",
+    "}",
+    "location ~ ^/items/[0-9]{2,4}$ {",
+    "  return 200;",
+    "}",
+    "location ~ ^/letters/\\p{Letter}{2,4}\\{x\\}$ {",
+    "  return 204;",
+    "}",
+  ]);
+
+  assertHasScope(lines[0], "map", "entity.name.type.block.nginx");
+  assertHasScope(lines[0], "{", "punctuation.section.block.begin.nginx");
+  assertHasScope(lines[1], "~*", "keyword.operator.regexp.nginx");
+  assertHasScope(lines[1], "^mobile", "string.regexp.unquoted.nginx");
+
+  const locationBlockBrace = lines[4].text.lastIndexOf("{");
+  assert.notEqual(locationBlockBrace, -1);
+  assert.ok(
+    scopesAt(lines[4], locationBlockBrace).includes(
+      "punctuation.section.block.begin.nginx",
+    ),
+    "location block brace was confused with the preceding PCRE quantifier",
+  );
+
+  const propertyBlockBrace = lines[7].text.lastIndexOf("{");
+  assert.notEqual(propertyBlockBrace, -1);
+  assert.ok(
+    scopesAt(lines[7], propertyBlockBrace).includes(
+      "punctuation.section.block.begin.nginx",
+    ),
+    "location block brace was confused with a PCRE property or escaped brace",
+  );
 });
 
 test("hash signs inside bare and quoted values are not comments", async () => {

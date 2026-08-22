@@ -77,8 +77,6 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(documentProvider, rangeProvider);
 }
 
-export function deactivate(): void {}
-
 function createMinimalEdit(
   document: vscode.TextDocument,
   replacementRange: vscode.Range,
